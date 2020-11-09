@@ -105,20 +105,18 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
     return model
 
 
-def gelu(x):
-    """Implementation of the gelu activation function.
-        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
-        0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
-        Also see https://arxiv.org/abs/1606.08415
-    """
+------gelu激活函数-----
+------0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))----   
+
+def gelu(x):  
     return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
 
 class GeLU(nn.Module):
-    """Implementation of the gelu activation function.
+    """
         For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
         0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
-        Also see https://arxiv.org/abs/1606.08415
+        
     """
     def __init__(self):
         super().__init__()
@@ -126,7 +124,8 @@ class GeLU(nn.Module):
     def forward(self, x):
         return gelu(x)
 
-
+----swish激活函数----
+-----输入gelu返回的x,通过x*torch.sigmoid(x)返回结果------
 def swish(x):
     return x * torch.sigmoid(x)
 
@@ -135,25 +134,27 @@ ACT2FN = {"gelu": gelu, "relu": torch.nn.functional.relu, "swish": swish}
 VISUAL_CONFIG = VisualConfig()
 
 
-try:
-    from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
-except ImportError:
-    logger.info("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
+    
+-----hidden_size = 768-----   
+
     class BertLayerNorm(nn.Module):
         def __init__(self, hidden_size, eps=1e-12):
-            """Construct a layernorm module in the TF style (epsilon inside the square root).
-            """
+          
+        --------构造TF形式的层规范模块------
             super(BertLayerNorm, self).__init__()
-            self.weight = nn.Parameter(torch.ones(hidden_size))
-            self.bias = nn.Parameter(torch.zeros(hidden_size))
+            self.weight = nn.Parameter(torch.ones(hidden_size))    #权重
+            self.bias = nn.Parameter(torch.zeros(hidden_size))    #神经网络乖离率
             self.variance_epsilon = eps
 
-        def forward(self, x):
+            
+            
+------前向传播，进行模型计算-----
+        def forward(self, x):  
             u = x.mean(-1, keepdim=True)
             s = (x - u).pow(2).mean(-1, keepdim=True)
             x = (x - u) / torch.sqrt(s + self.variance_epsilon)
             return self.weight * x + self.bias
-
+----输出结果：768*x + 768------
 
 class BertEmbeddings(nn.Module):      
     --------Bert嵌入-------
@@ -165,8 +166,17 @@ class BertEmbeddings(nn.Module):
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size, padding_idx=0)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size, padding_idx=0)
 
+-----vocab_size = 30522-----
+-----hidden_size = 768------
+----max_position_embeddings = 512-----       
+----type_vocab_size = 2------        
+----padding_idx = 0------
+
+
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
-        # any TensorFlow checkpoint file
+        #层规范可以用TensorFlow模型变量名来加载
+      
+ ------hidden_dropout_prob = 0.1-------
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
