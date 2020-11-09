@@ -148,7 +148,7 @@ VISUAL_CONFIG = VisualConfig()
 
             
             
-------前向传播，进行模型计算-----
+------前向传播，进行计算-----
         def forward(self, x):  
             u = x.mean(-1, keepdim=True)
             s = (x - u).pow(2).mean(-1, keepdim=True)
@@ -180,6 +180,13 @@ class BertEmbeddings(nn.Module):
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
+        
+        
+        
+        
+-----前向传播，参数是input_ids和token类型ids------
+
+        
     def forward(self, input_ids, token_type_ids=None):
         seq_length = input_ids.size(1)
         position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
@@ -187,29 +194,40 @@ class BertEmbeddings(nn.Module):
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
 
+            
+----- 将input_ids、position_ids、token_type_ids和           
+      words_embeddings、position_embeddings、token_type_embeddings对应进行嵌入，目的是为了计算最终嵌入-----
+    
         words_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = words_embeddings + position_embeddings + token_type_embeddings
-        embeddings = self.LayerNorm(embeddings)
-        embeddings = self.dropout(embeddings)
-        return embeddings
+        
+        embeddings = self.LayerNorm(embeddings)   #层规范嵌入
+        embeddings = self.dropout(embeddings)     #加入dropout避免嵌入过拟合
+        return embeddings                         #返回结果是embeddings
 
 
 class BertOutAttention(nn.Module):              #Bert注意力输出
     def __init__(self, config, ctx_dim=None):
         super().__init__()
-        if config.hidden_size % config.num_attention_heads != 0:
+        if config.hidden_size % config.num_attention_heads != 0:       #  判断 768 % 12 ！= 0 
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
                 "heads (%d)" % (config.hidden_size, config.num_attention_heads))
         self.num_attention_heads = config.num_attention_heads
-        self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
+        self.attention_head_size = int(config.hidden_size / config.num_attention_heads) 
+        
+   ----hidden_size / num_attention_heads强制取整给attention_head_size----
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
+        
+        
+        
+        
         if ctx_dim is None:
-            ctx_dim =config.hidden_size
+            ctx_dim =config.hidden_size     ctx_dim = 768
         self.query = nn.Linear(config.hidden_size, self.all_head_size)
         self.key = nn.Linear(ctx_dim, self.all_head_size)
         self.value = nn.Linear(ctx_dim, self.all_head_size)
