@@ -1,4 +1,4 @@
-# coding=utf-8
+-------跨模态关联nlvr2 模型--------
 
 import torch.nn as nn
 import torch.nn.functional as F
