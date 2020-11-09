@@ -1,19 +1,6 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+---------------------------------------
+------跨模态关联文本提取的BERT模型------
+---------------------------------------
 import copy
 import json
 import logging
@@ -36,6 +23,7 @@ from BERT_related.bert_config import BertConfig, VisualConfig
 
 logger = logging.getLogger(__name__)
 
+-------预训练模型下载，本文用到bert-base-uncased模型------
 PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased.tar.gz",
     'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased.tar.gz",
@@ -45,13 +33,17 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased.tar.gz",
     'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese.tar.gz",
 }
-CONFIG_NAME = 'bert_config.json'
+CONFIG_NAME = 'bert_config.json'    
 WEIGHTS_NAME = 'pytorch_model.bin'
 TF_WEIGHTS_NAME = 'model.ckpt'
 
+---加载bert配置文件----
+---加载pytorch模型文件----
+---加载权重模型文件----
 def load_tf_weights_in_bert(model, tf_checkpoint_path):
-    """ Load tf checkpoints in a pytorch model
-    """
+   
+----装入pytorch模型中的检查点----
+
     try:
         import re
         import numpy as np
@@ -62,7 +54,8 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
         raise
     tf_path = os.path.abspath(tf_checkpoint_path)
     print("Converting TensorFlow checkpoint from {}".format(tf_path))
-    # Load weights from TF model
+    
+   --------加载TF模型中的权重模块-----
     init_vars = tf.train.list_variables(tf_path)
     names = []
     arrays = []
@@ -74,8 +67,10 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
 
     for name, array in zip(names, arrays):
         name = name.split('/')
-        # adam_v and adam_m are variables used in AdamWeightDecayOptimizer to calculated m and v
-        # which are not required for using pretrained model
+        
+        
+        -----adam_v和adam_m是使用在adam权重衰减器中计算m和v的变量
+        -----不需要使用预训练模型-----
         if any(n in ["adam_v", "adam_m"] for n in name):
             print("Skipping {}".format("/".join(name)))
             continue
@@ -160,9 +155,10 @@ except ImportError:
             return self.weight * x + self.bias
 
 
-class BertEmbeddings(nn.Module):
-    """Construct the embeddings from word, position and token_type embeddings.
-    """
+class BertEmbeddings(nn.Module):      
+    --------Bert嵌入-------
+    ----从word、position和token类型的嵌入构造嵌入----
+    
     def __init__(self, config):
         super(BertEmbeddings, self).__init__()
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
