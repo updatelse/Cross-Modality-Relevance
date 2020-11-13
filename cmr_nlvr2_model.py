@@ -235,6 +235,9 @@ class Cross_Modality_Relevance(nn.Module):
         # lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim*2) ## [64, 10, 768] or 768*2
         # img_relat = img_relat.view(output_img.size()[0], -1, self.hid_dim*2) ## [64, 10, 768] or 768*2
 
+        
+        
+        ------爱因斯坦求和简记enisum-----
         relate_cross = torch.einsum(
             'bld,brd->blr',
             F.normalize(lang_relat, p=2, dim=-1),
