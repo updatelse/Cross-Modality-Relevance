@@ -1,0 +1,148 @@
+lass MLP(object):
+    """Multi-Layer Perceptron Class
+
+    A multilayer perceptron is a feedforward artificial neural network model
+    that has one layer or more of hidden units and nonlinear activations.
+    Intermidiate layers usually have as activation function thanh or the
+    sigmoid function (defined here by a ``SigmoidalLayer`` class)  while the
+    top layer is a softamx layer (defined here by a ``LogisticRegression``
+    class).
+    """
+
+    def __init__(self, rng, input, n_in, n_hidden, n_out):
+        """Initialize the parameters for the multilayer perceptron
+
+        :type rng: numpy.random.RandomState
+        :param rng: a random number generator used to initialize weights
+
+        :type input: theano.tensor.TensorType
+        :param input: symbolic variable that describes the input of the
+        architecture (one minibatch)
+
+        :type n_in: int
+        :param n_in: number of input units, the dimension of the space in
+        which the datapoints lie
+
+        :type n_hidden: int
+        :param n_hidden: number of hidden units
+
+        :type n_out: int
+        :param n_out: number of output units, the dimension of the space in
+        which the labels lie
+
+        """
+
+        # Since we are dealing with a one hidden layer MLP, this will
+        # translate into a TanhLayer connected to the LogisticRegression
+        # layer; this can be replaced by a SigmoidalLayer, or a layer
+        # implementing any other nonlinearity
+        self.hiddenLayer = HiddenLayer(rng=rng, input=input,
+                                 n_in=n_in, n_out=n_hidden,
+                                 activation=T.tanh, name_prefix='hid_')
+
+        # The logistic regression layer gets as input the hidden units
+        # of the hidden layer
+        self.logRegressionLayer = LogisticRegression(
+                                    input=self.hiddenLayer.output,
+                                    n_in=n_hidden,
+                                    n_out=n_out, name_prefix='log_')
+
+        # negative log likelihood of the MLP is given by the negative
+        # log likelihood of the output of the model, computed in the
+        # logistic regression layer
+        self.negative_log_likelihood = self.logRegressionLayer.negative_log_likelihood
+
+        # the parameters of the model are the parameters of the two layer it is
+        # made out of
+        self.params = self.hiddenLayer.params + self.logRegressionLayer.params
+
+
+def test_mlp():
+    """
+    Demonstrate stochastic gradient descent optimization for a multilayer
+    perceptron
+
+    This is demonstrated on MNIST.
+
+    :type learning_rate: float
+    :param learning_rate: learning rate used (factor for the stochastic
+    gradient
+
+    :type n_epochs: int
+    :param n_epochs: maximal number of epochs to run the optimizer
+
+    :type dataset: string
+    :param dataset: the path of the MNIST dataset file from
+                         http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz
+
+
+   """
+    datasets = gen_data()
+
+    train_set_x, train_set_y = datasets[0]
+    valid_set_x, valid_set_y = datasets[1]
+    test_set_x , test_set_y  = datasets[2]
+
+    batch_size = 100    # size of the minibatch
+
+    # compute number of minibatches for training, validation and testing
+    n_train_batches = train_set_x.get_value(borrow=True).shape[0] / batch_size
+    n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] / batch_size
+    n_test_batches  = test_set_x.get_value(borrow=True).shape[0]  / batch_size
+
+    ######################
+    # BUILD ACTUAL MODEL #
+    ######################
+    # print '... building the model'
+
+    # allocate symbolic variables for the data
+    index = T.lscalar()    # index to a [mini]batch
+    x     = T.matrix('x')  # the data is presented as rasterized images
+    y     = T.ivector('y')  # the labels are presented as 1D vector of
+                           # [int] labels
+
+    rng = np.random.RandomState(1234)
+
+    # construct the MLP class
+    classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)
+
+    # the cost we minimize during training is the negative log likelihood of
+    # the model.
+    # We take the mean of the cost over each minibatch.
+    cost = classifier.negative_log_likelihood(y).mean()
+
+    # compute the gradient of cost with respect to theta (stored in params)
+    # the resulting gradients will be stored in a list gparams
+    gparams = []
+    for param in classifier.params:
+        gparam  = T.grad(cost, param)
+        gparams.append(gparam)
+
+    # Some optimizations needed are tagged with 'fast_run'
+    # TODO: refine that and include only those
+    mode = theano.compile.get_default_mode().including('fast_run')
+
+    updates2 = OrderedDict()
+
+    updates2[classifier.hiddenLayer.params[0]] = T.grad(cost, classifier.hiddenLayer.params[0])
+    train_model = theano.function( inputs=[index],
+            updates=updates2,
+            givens={
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]},
+            mode=mode)
+    # print 'MODEL 1'
+    #theano.printing.debugprint(train_model, print_type=True)
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
+
+    # Even without FeatureShape
+    train_model = theano.function( inputs=[index],
+            updates=updates2,
+            mode=mode.excluding('ShapeOpt'),
+            givens={
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]})
+    # print
+    # print 'MODEL 2'
+    #theano.printing.debugprint(train_model, print_type=True)
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
