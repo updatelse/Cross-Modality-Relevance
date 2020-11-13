@@ -217,14 +217,19 @@ class Cross_Modality_Relevance(nn.Module):
 
         list_lang_relat = []
         list_img_relat = []
+        
+        
         for i in range(0, output_lang.size()[0]):
             tmp = torch.index_select(relate_lang_stack[i], 0, topk_lang_index[i]) ## [10, 768] or 768*2
+            ---- 0 表示按行索引，通过循环定位i将文本关系最相关的topk选出来----
             list_lang_relat.append(tmp)
         for i in range(0, output_img.size()[0]):
             tmp = torch.index_select(relate_img_stack[i], 0, topk_img_index[i])  ## [10, 768] or 768*2
+             ---- 0 表示按行索引，通过定位i将图像关联关系最相关的topk选出来----
             list_img_relat.append(tmp)
-        lang_relat = torch.cat(list_lang_relat, 0) ## [640, 768] or 768*2
-        img_relat = torch.cat(list_img_relat, 0) ## [640, 768] or 768*2
+            
+        lang_relat = torch.cat(list_lang_relat, 0) ## [640, 768] or 768*2    按维度0拼接，竖着拼
+        img_relat = torch.cat(list_img_relat, 0) ## [640, 768] or 768*2      按维度0拼接，竖着拼
         lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim) ## [64, 10, 768] or 768*2
         img_relat = img_relat.view(output_img.size()[0], -1, self.hid_dim) ## [64, 10, 768] or 768*2
         # lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim*2) ## [64, 10, 768] or 768*2
