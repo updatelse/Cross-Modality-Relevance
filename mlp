@@ -24,11 +24,11 @@ lass MLP(object):
         which the datapoints lie
 
         :type n_hidden: int
-        :param n_hidden: number of hidden units
+        :param n_hidden: number of hidden units 隐藏单元数
 
         :type n_out: int
         :param n_out: number of output units, the dimension of the space in
-        which the labels lie
+        which the labels lie  输出单元数
 
         """
 
@@ -52,8 +52,7 @@ lass MLP(object):
         # logistic regression layer
         self.negative_log_likelihood = self.logRegressionLayer.negative_log_likelihood
 
-        # the parameters of the model are the parameters of the two layer it is
-        # made out of
+        ## 模型的参数是它所在的两层的参数合成
         self.params = self.hiddenLayer.params + self.logRegressionLayer.params
 
 
@@ -83,7 +82,7 @@ def test_mlp():
     valid_set_x, valid_set_y = datasets[1]
     test_set_x , test_set_y  = datasets[2]
 
-    batch_size = 100    # size of the minibatch
+    batch_size = 100     # 小批量的大小
 
     # compute number of minibatches for training, validation and testing
     n_train_batches = train_set_x.get_value(borrow=True).shape[0] / batch_size
@@ -95,7 +94,7 @@ def test_mlp():
     ######################
     # print '... building the model'
 
-    # allocate symbolic variables for the data
+    # 数据分配符号变量
     index = T.lscalar()    # index to a [mini]batch
     x     = T.matrix('x')  # the data is presented as rasterized images
     y     = T.ivector('y')  # the labels are presented as 1D vector of
@@ -103,16 +102,16 @@ def test_mlp():
 
     rng = np.random.RandomState(1234)
 
-    # construct the MLP class
-    classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)
+    # 构建MLP类
+    classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)  # MLP 输入是28*28，隐藏神经元为500，输出为10
 
-    # the cost we minimize during training is the negative log likelihood of
-    # the model.
-    # We take the mean of the cost over each minibatch.
+    # 我们在训练过程中最小化的代价是的负对数可能性模型
+    
+    # 我们取每一小批的成本的平均值.
     cost = classifier.negative_log_likelihood(y).mean()
 
-    # compute the gradient of cost with respect to theta (stored in params)
-    # the resulting gradients will be stored in a list gparams
+    # 计算代价关于的梯度 (stored in params)
+    # 产生的梯度将存储在一个gparams列表中
     gparams = []
     for param in classifier.params:
         gparam  = T.grad(cost, param)
