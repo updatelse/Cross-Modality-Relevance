@@ -55,35 +55,29 @@ class Cross_Modality_Relevance(nn.Module):
             BertLayerNorm(hid_dim * 2, eps=1e-12),
             nn.Linear(hid_dim * 2, hid_dim)
         )
-        # self.logit_fc4.apply(self.bert_encoder.model.init_bert_weights)
-
-        # self.w1 = Variable(torch.rand(1, 20, 20), requires_grad=True).cuda()
-        # self.w2 = Variable(torch.rand(1, 36, 36), requires_grad=True).cuda()
-        # self.w3 = Variable(torch.rand(1, 20, 190), requires_grad=True).cuda()
-        # self.w4 = Variable(torch.rand(1, 630, 36), requires_grad=True).cuda()
-
+      
+       -------文本的卷积、池化、全连接处理-----
+       ---------------------------------------
         self.lang_conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=0)
         self.lang_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.lang_conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=0)
         self.lang_pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.lang_fc1 = nn.Linear(32*3*7, hid_dim)
 
+        ------图像的卷积、池化、全连接处理------
         self.img_conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=0)
         self.img_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.img_conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=0)
         self.img_pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.img_fc1 = nn.Linear(32*7*7, hid_dim)
-
+        
+        ------文本、图像跨模态的处理-----
         self.cross_conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0)
         self.cross_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        # self.cross_conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=0)
-        # self.cross_pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.cross_fc1 = nn.Linear(32*5*5, hid_dim)
 
         self.rel_conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0)
         self.rel_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        # self.rel_conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=0)
-        # self.rel_pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.rel_fc1 = nn.Linear(32*4*4, hid_dim)
 
 #         self.final_classifier = nn.Linear(hid_dim*4, 2)
@@ -178,7 +172,7 @@ class Cross_Modality_Relevance(nn.Module):
 
         relate_img_stack_1 = output_img.view(output_img.size()[0], 1, output_img.size()[1], output_img.size()[2])
         relate_img_stack_2 = output_img.view(output_img.size()[0], output_img.size()[1], 1, output_img.size()[2])
-        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768] 视觉实体 最相关堆叠
+        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768] 视觉实体 最相关堆叠。 与文本的处理方法不同
         # relate_img_stack_1 = relate_img_stack_1.repeat(1,output_img.size()[1],1,1)  ## [64, 20, 20, 768] second dim repeat 10 times, others not change
         # relate_img_stack_2 = relate_img_stack_2.repeat(1,1,output_img.size()[1],1)  ## [64, 20, 20, 768] third dim repeat 10 times, others not change
         # relate_img_stack = torch.cat((relate_img_stack_1, relate_img_stack_2), 3)
