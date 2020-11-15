@@ -178,7 +178,7 @@ class Cross_Modality_Relevance(nn.Module):
 
         relate_img_stack_1 = output_img.view(output_img.size()[0], 1, output_img.size()[1], output_img.size()[2])
         relate_img_stack_2 = output_img.view(output_img.size()[0], output_img.size()[1], 1, output_img.size()[2])
-        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768]
+        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768] 视觉实体 最相关堆叠
         # relate_img_stack_1 = relate_img_stack_1.repeat(1,output_img.size()[1],1,1)  ## [64, 20, 20, 768] second dim repeat 10 times, others not change
         # relate_img_stack_2 = relate_img_stack_2.repeat(1,1,output_img.size()[1],1)  ## [64, 20, 20, 768] third dim repeat 10 times, others not change
         # relate_img_stack = torch.cat((relate_img_stack_1, relate_img_stack_2), 3)
@@ -274,7 +274,7 @@ class Cross_Modality_Relevance(nn.Module):
         #### new experiment for lang and two images
         cross_img_sen = torch.einsum(
             'bld,brd->blr',
-            F.normalize(output_lang, p=2, dim=-1),
+            F.normalize(output_lang, p=2, dim=-1), #归一化文本
             F.normalize(output_img, p=2, dim=-1)
         )
 
@@ -307,7 +307,7 @@ class Cross_Modality_Relevance(nn.Module):
         logit3 = self.logit_fc3(img_fc1)
 
 
-        entity_fc1 = F.relu(self.lang_fc1(entity_conv_2.view(-1, 32*3*7)))
+        entity_fc1 = F.r(self.lang_fc1(entity_conv_2.view(-1, 32*3*7)))
         entity_fc1 = entity_fc1.view(-1, self.hid_dim*2)
         logit2 = self.logit_fc2(entity_fc1)
 
