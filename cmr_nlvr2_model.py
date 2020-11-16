@@ -176,7 +176,7 @@ class Cross_Modality_Relevance(nn.Module):
         # relate_img_stack_1 = relate_img_stack_1.repeat(1,output_img.size()[1],1,1)  ## [64, 20, 20, 768] second dim repeat 10 times, others not change
         # relate_img_stack_2 = relate_img_stack_2.repeat(1,1,output_img.size()[1],1)  ## [64, 20, 20, 768] third dim repeat 10 times, others not change
         # relate_img_stack = torch.cat((relate_img_stack_1, relate_img_stack_2), 3)
-
+  
         # relate_img_stack = relate_img_stack.view(-1, output_lang.size()[2]*2)
         # relate_img_stack = self.lang_2_to_1(relate_img_stack)
         # relate_img_stack = relate_img_stack.view(output_img.size()[0], output_img.size()[1], output_img.size()[1], output_img.size()[2])
