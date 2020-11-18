@@ -75,8 +75,9 @@ class Cross_Modality_Relevance(nn.Module):
         self.cross_conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0)
         self.cross_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.cross_fc1 = nn.Linear(32*5*5, hid_dim)
-
-        self.rel_conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0)
+        ------关系相关性的处理------
+        --------- relation----------
+        self.rel_conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=0)  
         self.rel_pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.rel_fc1 = nn.Linear(32*4*4, hid_dim)
 
