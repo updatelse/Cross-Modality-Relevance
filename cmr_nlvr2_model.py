@@ -1,4 +1,4 @@
--------跨模态关联nlvr2 模型--------
+-------跨模态关联CMR模型--------
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,7 +11,7 @@ from model.encoder_bert import BertEncoder
 from BERT_related.modeling import GeLU, BertLayerNorm
 
 
-class Cross_Modality_Relevance(nn.Module):
+class Cross_Modality_Relevance(nn.Module):       #CMR
     def __init__(self, cfg):
         super().__init__()
         self.bert_encoder = BertEncoder(
@@ -36,7 +36,7 @@ class Cross_Modality_Relevance(nn.Module):
             nn.Linear(hid_dim * 2, hid_dim)
             # nn.Linear(hid_dim * 1, 2)
         )
-        # self.logit_fc2.apply(self.bert_encoder.model.init_bert_weights)
+      
 
         self.logit_fc3 = nn.Sequential(
             # nn.Linear(hid_dim * 2, hid_dim * 2), ## original:  all 2,  chen: all 4
@@ -161,9 +161,9 @@ class Cross_Modality_Relevance(nn.Module):
         #### new experiment for relationship
         relate_lang_stack_1 = output_lang.view(output_lang.size()[0], 1, output_lang.size()[1], output_lang.size()[2])
         relate_lang_stack_2 = output_lang.view(output_lang.size()[0], output_lang.size()[1], 1, output_lang.size()[2])
-        # relate_lang_stack = relate_lang_stack_1 + relate_lang_stack_2 ## [64, 20, 20, 768]
-        relate_lang_stack_1 = relate_lang_stack_1.repeat(1,output_lang.size()[1],1,1)  ## [64, 20, 20, 768] second dim repeat 10 times, others not change
-        relate_lang_stack_2 = relate_lang_stack_2.repeat(1,1,output_lang.size()[1],1)  ## [64, 20, 20, 768] third dim repeat 10 times, others not change
+       
+        relate_lang_stack_1 = relate_lang_stack_1.repeat(1,output_lang.size()[1],1,1)  ## [64, 20, 20, 768] 
+        relate_lang_stack_2 = relate_lang_stack_2.repeat(1,1,output_lang.size()[1],1)  ## [64, 20, 20, 768] 
         relate_lang_stack = torch.cat((relate_lang_stack_1, relate_lang_stack_2), 3)   ## [64, 20, 20, 768*2]
 
         relate_lang_stack = relate_lang_stack.view(-1, output_lang.size()[2]*2)
@@ -173,42 +173,36 @@ class Cross_Modality_Relevance(nn.Module):
 
         relate_img_stack_1 = output_img.view(output_img.size()[0], 1, output_img.size()[1], output_img.size()[2])
         relate_img_stack_2 = output_img.view(output_img.size()[0], output_img.size()[1], 1, output_img.size()[2])
-        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768] 视觉实体 最相关堆叠。 与文本的处理方法不同
-        # relate_img_stack_1 = relate_img_stack_1.repeat(1,output_img.size()[1],1,1)  ## [64, 20, 20, 768] second dim repeat 10 times, others not change
-        # relate_img_stack_2 = relate_img_stack_2.repeat(1,1,output_img.size()[1],1)  ## [64, 20, 20, 768] third dim repeat 10 times, others not change
-        # relate_img_stack = torch.cat((relate_img_stack_1, relate_img_stack_2), 3)
+        relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768]   视觉实体 最相关堆叠。 与文本的处理方法不同
+        
   
-        # relate_img_stack = relate_img_stack.view(-1, output_lang.size()[2]*2)
-        # relate_img_stack = self.lang_2_to_1(relate_img_stack)
-        # relate_img_stack = relate_img_stack.view(output_img.size()[0], output_img.size()[1], output_img.size()[1], output_img.size()[2])
+        
 
         relate_lang_stack = relate_lang_stack.view(relate_lang_stack.size()[0], relate_lang_stack.size()[1]*relate_lang_stack.size()[2], relate_lang_stack.size()[3])  ## [64, 400, 768] or 768*2
         relate_img_stack = relate_img_stack.view(relate_img_stack.size()[0], relate_img_stack.size()[1]*relate_img_stack.size()[2], relate_img_stack.size()[3])  ## [64, 1296, 768] or 768*2
-        ### a beautiful way
+       
         relate_lang_ind = torch.tril_indices(output_lang.size()[1], output_lang.size()[1], -1).cuda(0)
         relate_lang_ind[1] = relate_lang_ind[1] * output_lang.size()[1]
         relate_lang_ind = relate_lang_ind.sum(0)
-        relate_lang_stack = relate_lang_stack.index_select(1, relate_lang_ind) ## [64, 190, 768] or 768*2
+        relate_lang_stack = relate_lang_stack.index_select(1, relate_lang_ind) ## [64, 190, 768]
 
         relate_img_ind = torch.tril_indices(output_img.size()[1], output_img.size()[1], -1).cuda(0)
         relate_img_ind[1] = relate_img_ind[1] * output_img.size()[1]
         relate_img_ind = relate_img_ind.sum(0)
-        relate_img_stack = relate_img_stack.index_select(1, relate_img_ind) ## [64, 630, 768] or 768*2
-
-        ## reshape the relate_lang_stack and relate_img_stack
+        relate_img_stack = relate_img_stack.index_select(1, relate_img_ind) ## [64, 630, 768] 
+        ## 重新定义relate_lang_stack（文本关系的堆叠）和relate_img_stack（图像关系的堆叠）
         tmp_lang_stack = relate_lang_stack.view(-1, self.hid_dim) # sum
         tmp_img_stack = relate_img_stack.view(-1, self.hid_dim)   # sum
-        # tmp_lang_stack = relate_lang_stack.view(-1, self.hid_dim*2)   # cat
-        # tmp_img_stack = relate_img_stack.view(-1, self.hid_dim*2)     # cat
+       
 
         lang_candidate_relat_score = self.lang_relation(tmp_lang_stack)
         img_candidate_relat_score = self.img_relation(tmp_img_stack)
 
-        lang_candidate_relat_score = lang_candidate_relat_score.view(output_lang.size()[0], relate_lang_stack.size()[1]) ##(64, 190)
-        img_candidate_relat_score = img_candidate_relat_score.view(output_img.size()[0], relate_img_stack.size()[1]) ## (64,630)
+        lang_candidate_relat_score = lang_candidate_relat_score.view(output_lang.size()[0], relate_lang_stack.size()[1])     ##(64, 190)
+        img_candidate_relat_score = img_candidate_relat_score.view(output_img.size()[0], relate_img_stack.size()[1])         ## (64,630)
 
-        _, topk_lang_index = torch.topk(lang_candidate_relat_score, self.top_k_value, sorted=False) ##(64, 10)
-        _, topk_img_index = torch.topk(img_candidate_relat_score, self.top_k_value, sorted=False)  ##(64, 10)
+        _, topk_lang_index = torch.topk(lang_candidate_relat_score, self.top_k_value, sorted=False)          ##(64, 10)
+        _, topk_img_index = torch.topk(img_candidate_relat_score, self.top_k_value, sorted=False)            ##(64, 10)
 
         list_lang_relat = []
         list_img_relat = []
@@ -227,10 +221,9 @@ class Cross_Modality_Relevance(nn.Module):
         img_relat = torch.cat(list_img_relat, 0) ## [640, 768]       按维度0拼接，竖着拼
         
         ----第20行定义hid_dim维度是768，将一个多行的矩阵,拼接成一行----
-        lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim) ## [64, 10, 768]  
-        img_relat = img_relat.view(output_img.size()[0], -1, self.hid_dim) ## [64, 10, 768] 
-        # lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim*2) ## [64, 10, 768]
-        # img_relat = img_relat.view(output_img.size()[0], -1, self.hid_dim*2) ## [64, 10, 768] 
+        lang_relat = lang_relat.view(output_lang.size()[0], -1, self.hid_dim)               ## [64, 10, 768]  
+        img_relat = img_relat.view(output_img.size()[0], -1, self.hid_dim)                  ## [64, 10, 768] 
+       
 
         
         
@@ -264,12 +257,12 @@ class Cross_Modality_Relevance(nn.Module):
 
         cross_1_2 = cross_1_2.view(-1, 1, cross_1_2.size()[1], cross_1_2.size()[2])
         cross_conv_1 = self.cross_pool1(F.relu(self.cross_conv1(cross_1_2)))
-        # cross_conv_2 = self.cross_pool2(F.relu(self.cross_conv2(cross_conv_1)))
+       
 
         #### new experiment for lang and two images
         cross_img_sen = torch.einsum(
             'bld,brd->blr',
-            F.normalize(output_lang, p=2, dim=-1), #归一化文本
+            F.normalize(output_lang, p=2, dim=-1),         #归一化文本
             F.normalize(output_img, p=2, dim=-1)
         )
 
