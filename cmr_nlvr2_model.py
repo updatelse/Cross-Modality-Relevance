@@ -26,7 +26,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             BertLayerNorm(hid_dim * 1, eps=1e-12),
             # nn.Linear(hid_dim * 1, 2)
         )
-        # self.logit_fc1.apply(self.bert_encoder.model.init_bert_weights)
+      
 
         self.logit_fc2 = nn.Sequential(
             # nn.Linear(hid_dim * 2, hid_dim * 2), ## original:  all 2,  chen: all 4
@@ -46,7 +46,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             # nn.Linear(hid_dim * 2, hid_dim)
             # nn.Linear(hid_dim * 1, 2)
         )
-        # self.logit_fc3.apply(self.bert_encoder.model.init_bert_weights)
+      
 
         self.logit_fc4 = nn.Sequential(
             # nn.Linear(hid_dim * 2, hid_dim * 2), ## original:  all 2,  chen: all 4
@@ -142,15 +142,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         feat = feat.view(batch_size * 2, obj_num, feat_size)
         pos = pos.view(batch_size * 2, obj_num, 4)
 
-        # #### original code begin
-        # #### Extract feature --> Concat
-        # x = self.bert_encoder(sent, (feat, pos))
-        # x = x.view(-1, self.hid_dim*2)
-        # #### original code end
-
-        # #### Compute logit of answers
-        # logit = self.logit_fc(x)
-        # #### original code end
+        
 
         ## chen begin
         output_lang, output_img, output_cross = self.bert_encoder(sent, (feat, pos))
@@ -227,7 +219,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
 
         
         
-        ------爱因斯坦求和简记enisum-----
+        ------求和简记enisum-----
         relate_cross = torch.einsum(
             'bld,brd->blr',
             F.normalize(lang_relat, p=2, dim=-1),
@@ -259,7 +251,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         cross_conv_1 = self.cross_pool1(F.relu(self.cross_conv1(cross_1_2)))
        
 
-        #### new experiment for lang and two images
+ 
         cross_img_sen = torch.einsum(
             'bld,brd->blr',
             F.normalize(output_lang, p=2, dim=-1),         #归一化文本
@@ -270,7 +262,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         entity_conv_1 = self.lang_pool1(F.relu(self.lang_conv1(cross_img_sen)))
         entity_conv_2 = self.lang_pool2(F.relu(self.lang_conv2(entity_conv_1)))
 
-        ### new experiment for two images
+     
         image_2_together = output_img.view(-1, output_img.size()[1], self.hid_dim*2)
         # print(image_2_together.size())
         images = torch.split(image_2_together, self.hid_dim//2, dim=2)
@@ -290,23 +282,49 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         cross_img_conv_2 = self.img_pool2(F.relu(self.img_conv2(cross_img_conv_1)))
         # print(cross_img_conv_2.size())
 
-        img_fc1 = F.relu(self.img_fc1(cross_img_conv_2.view(-1, 32*7*7)))
-        img_fc1 = img_fc1.view(-1, self.hid_dim)
+        img_fc1 = F.relu(self.img_fc1(cross_img_conv_2.view(-1, 32*7*7)))  #[16,768]
+        img_fc1 = img_fc1.view(-1, self.hid_dim)             #[16,768]
         logit3 = self.logit_fc3(img_fc1)
 
 
-        entity_fc1 = F.r(self.lang_fc1(entity_conv_2.view(-1, 32*3*7)))
-        entity_fc1 = entity_fc1.view(-1, self.hid_dim*2)
+        entity_fc1 = F.relu(self.lang_fc1(entity_conv_2.view(-1, 32*3*7)))  #[32,768]
+        entity_fc1 = entity_fc1.view(-1, self.hid_dim*2)             #[16,1536]
         logit2 = self.logit_fc2(entity_fc1)
 
-        cross_fc1 = F.relu(self.cross_fc1(cross_conv_1.view(-1, 32*5*5)))
-        cross_fc1 = cross_fc1.view(-1, self.hid_dim)
+        cross_fc1 = F.relu(self.cross_fc1(cross_conv_1.view(-1, 32*5*5)))   #[16,768]
+        cross_fc1 = cross_fc1.view(-1, self.hid_dim)           #[16,768]
         logit1 = self.logit_fc1(cross_fc1)
         # print(logit1.size(),logit2.size(),logit3.size(),logit4.size())
 
         cross_logit = torch.cat((logit1, logit2, logit3, logit4), 1)
+        """
+        tensor([[-0.2139,  0.3784,  0.9387,  ..., -0.1756,  0.1168,  0.0607],
+        [-0.6753,  0.9254,  0.6489,  ..., -0.2070,  0.0925, -0.0017],
+        [ 1.6644, -0.1369,  0.1733,  ..., -0.1126,  0.0615, -0.0291],
+        ...,
+        [ 1.4712, -0.0047, -0.1039,  ..., -0.0242,  0.0706, -0.0403],
+        [-0.5130,  0.7198,  0.6187,  ..., -0.2306,  0.0624, -0.0451],
+        [ 1.3556, -0.1325,  0.1330,  ..., -0.1853,  0.0929, -0.0079]],
+                )"""
 
-        logit = self.final_classifier(cross_logit)
 
+        logit = self.final_classifier(cross_logit)   #[16,2]
+        """
+        tensor([[-4.2828,  3.0125],
+        [-6.4487,  4.2980],
+        [ 2.4849, -2.6901],
+        [ 3.0247, -3.2686],
+        [-5.2857,  3.6110],
+        [-2.9682,  2.1684],
+        [-6.6588,  4.4243],
+        [ 2.7861, -3.0181],
+        [-6.4010,  4.2739],
+        [-6.0274,  4.0590],
+        [-6.4662,  4.3115],
+        [ 2.5199, -2.7168],
+        [-6.3698,  4.2488],
+        [ 3.3531, -3.6052],
+        [-5.4724,  3.7248],
+        [ 2.1075, -2.2849]],)"""
 
         return logit
