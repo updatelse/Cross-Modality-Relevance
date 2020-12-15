@@ -24,7 +24,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             nn.Linear(hid_dim * 1, hid_dim * 1),
             GeLU(),
             BertLayerNorm(hid_dim * 1, eps=1e-12),
-            # nn.Linear(hid_dim * 1, 2)
+          
         )
       
 
@@ -34,7 +34,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             GeLU(),
             BertLayerNorm(hid_dim * 2, eps=1e-12),
             nn.Linear(hid_dim * 2, hid_dim)
-            # nn.Linear(hid_dim * 1, 2)
+        
         )
       
 
@@ -43,8 +43,7 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             nn.Linear(hid_dim * 1, hid_dim * 1),
             GeLU(),
             BertLayerNorm(hid_dim * 1, eps=1e-12),
-            # nn.Linear(hid_dim * 2, hid_dim)
-            # nn.Linear(hid_dim * 1, 2)
+           
         )
       
 
@@ -88,7 +87,6 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             GeLU(),
             BertLayerNorm(hid_dim * 4, eps=1e-12),
             # nn.Linear(hid_dim * 4, 2)
-            # nn.ReLU(),
             nn.Linear(hid_dim*4, hid_dim),
             nn.ReLU(),
             nn.Linear(hid_dim, hid_dim//4),
@@ -96,11 +94,11 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
             nn.Linear(hid_dim//4 , 2)
         )
 
-        ## for relationship
+        ## 关系的操作
         self.lang_2_to_1 = nn.Sequential(
-            nn.Linear(hid_dim*2, hid_dim*2),
-            nn.ReLU(),
-            nn.Linear(hid_dim*2, hid_dim),
+            nn.Linear(hid_dim*2, hid_dim*2),   #in_dim , hid_dim
+            nn.ReLU(),                         #ReLU激活函数
+            nn.Linear(hid_dim*2, hid_dim),     #hid_dim , out_dim
         )
         self.img_2_to_1 = nn.Sequential(
             nn.Linear(hid_dim*2, hid_dim*2),
@@ -143,14 +141,10 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         pos = pos.view(batch_size * 2, obj_num, 4)
 
         
-
-        ## chen begin
         output_lang, output_img, output_cross = self.bert_encoder(sent, (feat, pos))
-        # output_cross = output_cross.view(-1, self.hid_dim*2) ## original
         output_cross = output_cross.view(-1, self.hid_dim)
 
 
-        #### new experiment for relationship
         relate_lang_stack_1 = output_lang.view(output_lang.size()[0], 1, output_lang.size()[1], output_lang.size()[2])
         relate_lang_stack_2 = output_lang.view(output_lang.size()[0], output_lang.size()[1], 1, output_lang.size()[2])
        
@@ -168,10 +162,10 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
         relate_img_stack = relate_img_stack_1 + relate_img_stack_2 ## [64, 36, 36, 768]   视觉实体 最相关堆叠。 与文本的处理方法不同
         
   
-        
+  
 
-        relate_lang_stack = relate_lang_stack.view(relate_lang_stack.size()[0], relate_lang_stack.size()[1]*relate_lang_stack.size()[2], relate_lang_stack.size()[3])  ## [64, 400, 768] or 768*2
-        relate_img_stack = relate_img_stack.view(relate_img_stack.size()[0], relate_img_stack.size()[1]*relate_img_stack.size()[2], relate_img_stack.size()[3])  ## [64, 1296, 768] or 768*2
+        relate_lang_stack = relate_lang_stack.view(relate_lang_stack.size()[0], relate_lang_stack.size()[1]*relate_lang_stack.size()[2], relate_lang_stack.size()[3])# [64, 400, 768]
+        relate_img_stack = relate_img_stack.view(relate_img_stack.size()[0], relate_img_stack.size()[1]*relate_img_stack.size()[2], relate_img_stack.size()[3])# [64, 1296, 768] 
        
         relate_lang_ind = torch.tril_indices(output_lang.size()[1], output_lang.size()[1], -1).cuda(0)
         relate_lang_ind[1] = relate_lang_ind[1] * output_lang.size()[1]
@@ -254,8 +248,8 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
  
         cross_img_sen = torch.einsum(
             'bld,brd->blr',
-            F.normalize(output_lang, p=2, dim=-1),         #归一化文本
-            F.normalize(output_img, p=2, dim=-1)
+            F.normalize(output_lang, p=2, dim=-1),  #文本
+            F.normalize(output_img, p=2, dim=-1)    #图像
         )
 
         cross_img_sen = cross_img_sen.view(-1, 1, cross_img_sen.size()[1], cross_img_sen.size()[2])
@@ -264,9 +258,8 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
 
      
         image_2_together = output_img.view(-1, output_img.size()[1], self.hid_dim*2)
-        # print(image_2_together.size())
         images = torch.split(image_2_together, self.hid_dim//2, dim=2)
-        # print(images[0].size(), images[1].size())
+      
 
         image1 = images[0]
         image2 = images[1]
@@ -308,23 +301,8 @@ class Cross_Modality_Relevance(nn.Module):       #CMR
                 )"""
 
 
-        logit = self.final_classifier(cross_logit)   #[16,2]
+        logit = self.final_classifier(cross_logit)   #[16,2]的维度
         """
-        tensor([[-4.2828,  3.0125],
-        [-6.4487,  4.2980],
-        [ 2.4849, -2.6901],
-        [ 3.0247, -3.2686],
-        [-5.2857,  3.6110],
-        [-2.9682,  2.1684],
-        [-6.6588,  4.4243],
-        [ 2.7861, -3.0181],
-        [-6.4010,  4.2739],
-        [-6.0274,  4.0590],
-        [-6.4662,  4.3115],
-        [ 2.5199, -2.7168],
-        [-6.3698,  4.2488],
-        [ 3.3531, -3.6052],
-        [-5.4724,  3.7248],
-        [ 2.1075, -2.2849]],)"""
+        """
 
         return logit
