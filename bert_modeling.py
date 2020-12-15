@@ -114,7 +114,7 @@ def gelu(x):
 
 class GeLU(nn.Module):
     """
-        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
+        For information:
         0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
         
     """
@@ -173,7 +173,6 @@ class BertEmbeddings(nn.Module):
 ----padding_idx = 0------
 
 
-        # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         #层规范可以用TensorFlow模型变量名来加载
       
  ------hidden_dropout_prob = 0.1-------
@@ -181,8 +180,7 @@ class BertEmbeddings(nn.Module):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
         
-        
-        
+
         
 -----前向传播，参数是input_ids和token类型ids------
 
@@ -219,7 +217,7 @@ class BertOutAttention(nn.Module):              #Bert注意力输出
         self.num_attention_heads = config.num_attention_heads
         self.attention_head_size = int(config.hidden_size / config.num_attention_heads) 
         
-   ----hidden_size / num_attention_heads强制取整给attention_head_size----
+        ## hidden_size / num_attention_heads强制取整给attention_head_size
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
         
@@ -247,19 +245,17 @@ class BertOutAttention(nn.Module):              #Bert注意力输出
         query_layer = self.transpose_for_scores(mixed_query_layer)
         key_layer = self.transpose_for_scores(mixed_key_layer)
         value_layer = self.transpose_for_scores(mixed_value_layer)
-
-        # Take the dot product between "query" and "key" to get the raw attention scores.
+       
+        #将query和key做点乘获得原始注意力分数
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+        # (预先计算BertModel前向传播函数所有层)
         if attention_mask is not None:
             attention_scores = attention_scores + attention_mask
 
-        # Normalize the attention scores to probabilities.
+        # 将注意力分数归一化为概率.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
 
-        # This is actually dropping out entire tokens to attend to, which might
-        # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs)
 
         context_layer = torch.matmul(attention_probs, value_layer)
@@ -269,7 +265,7 @@ class BertOutAttention(nn.Module):              #Bert注意力输出
         return context_layer
 
 
-class BertSelfAttention(nn.Module):      #Bert自我注意力
+class BertSelfAttention(nn.Module):      #Bert自注意力
     def __init__(self, config):
         super(BertSelfAttention, self).__init__()
         if config.hidden_size % config.num_attention_heads != 0:
@@ -300,18 +296,16 @@ class BertSelfAttention(nn.Module):      #Bert自我注意力
         key_layer = self.transpose_for_scores(mixed_key_layer)
         value_layer = self.transpose_for_scores(mixed_value_layer)
 
-        # Take the dot product between "query" and "key" to get the raw attention scores.
+        # 将query和key做点乘获得原始注意力分数.
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+     
         if attention_mask is not None:
             attention_scores = attention_scores + attention_mask
 
-        # Normalize the attention scores to probabilities.
+        # 将注意力分数归一化为概率.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
 
-        # This is actually dropping out entire tokens to attend to, which might
-        # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs)
 
         context_layer = torch.matmul(attention_probs, value_layer)
@@ -468,7 +462,7 @@ class CrossEncoder(nn.Module):
         return lang_feats, visn_feats
 
 
-class Cross_Layer(nn.Module):
+class Cross_Layer(nn.Module):   #跨模态网络
     def __init__(self, config):
         super().__init__()
         self.lang_self_att = BertAttention(config)
@@ -520,8 +514,7 @@ class BertPooler(nn.Module):
         self.activation = nn.Tanh()
 
     def forward(self, hidden_states):
-        # We "pool" the model by simply taking the hidden state corresponding
-        # to the first token.
+       
         first_token_tensor = hidden_states[:, 0]
         pooled_output = self.dense(first_token_tensor)
         pooled_output = self.activation(pooled_output)
@@ -584,14 +577,13 @@ class BertVisualObjHead(nn.Module):
         super().__init__()
         self.transform = BertPredictionHeadTransform(config)
 
-        # Decide the use of visual losses
+        
         visual_losses = visual_losses.split(",")
         for loss in visual_losses:
             assert loss in VISUAL_CONFIG.VISUAL_LOSSES
         self.visual_losses = visual_losses
 
-        # The output weights are the same as the input embeddings, but there is
-        # an output-only bias for each token.
+        # 输出权重与输入嵌入值相同
         self.decoder_dict = nn.ModuleDict({
             key: nn.Linear(config.hidden_size, VISUAL_CONFIG.visual_loss_config[key][0])
             for key in self.visual_losses
@@ -636,8 +628,7 @@ class BertPreTrainedModel(nn.Module):    #Bert预训练模型
         """  初始化权重函数  """
        
         if isinstance(module, (nn.Linear, nn.Embedding)):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
+            
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range) #标准是初始化可控范围内
         elif isinstance(module, BertLayerNorm):
             module.bias.data.zero_()
